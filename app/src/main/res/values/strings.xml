@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">GB Downloader</string>
+    <string name="action_settings">Settings</string>
+    <string name="api_key_str">Enter your Giantbomb API Key.\nSign in at https://www.giantbomb.com/api/ to get yours</string>
+    <string name="api_hint">API key</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+</resources>
