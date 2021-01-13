@@ -58,7 +58,7 @@ public class RestRequestor {
             qPairs.add(new Pair<>("offset", String.valueOf(offset)));
         }
 
-        qPairs.add(new Pair<>("field_list", "deck,image,name,length_seconds," + quality.getQual()));
+        qPairs.add(new Pair<>("field_list", "deck,image,name,length_seconds,premium," + quality.getQual()));
 
         String query = NetUtils.buildQueryString(apiKey, qPairs);
 

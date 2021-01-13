@@ -34,6 +34,7 @@ public class GBVideoInfo {
     private String desc;
     private String length;
     private URI videoUrl;
+    private boolean premium;
 
     public GBVideoInfo(JSONObject json, String qualStr) throws JSONException, URISyntaxException {
         JSONObject imgObj = json.getJSONObject("image");
@@ -57,6 +58,7 @@ public class GBVideoInfo {
         }
 
         videoUrl = new URI(json.getString(qualStr));
+        premium = json.getBoolean("premium");
     }
 
     public URI getImageUrl() {
@@ -77,6 +79,10 @@ public class GBVideoInfo {
 
     public URI getVideoUrl() {
         return videoUrl;
+    }
+
+    public boolean isPremium() {
+        return premium;
     }
 
     @Override

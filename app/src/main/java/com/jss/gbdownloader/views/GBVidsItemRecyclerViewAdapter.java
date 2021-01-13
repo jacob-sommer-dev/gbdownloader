@@ -30,6 +30,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Color;
 import android.media.Image;
 import android.net.Uri;
 import android.os.Handler;
@@ -142,6 +143,12 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                     holder.updateProgress(progress);
                 }
             });
+        }
+
+        if(holder.mItem.isPremium()){
+            holder.mView.setBackgroundColor(Color.rgb(220,220,188));
+        } else {
+            holder.mView.setBackgroundColor(Color.rgb(188,188,188));
         }
 
         holder.updateDLButton();
