@@ -42,6 +42,7 @@ public class NetUtils {
     public static ConcurrentHashMap<String, Bitmap> bitmapCache = new ConcurrentHashMap<>();
 
     public enum VidQuality {
+        ALL("low_url,high_url,hd_url"),
         LOW("low_url"),
         HIGH("high_url"),
         HD("hd_url");
@@ -53,6 +54,15 @@ public class NetUtils {
 
         public String getQual() {
             return qVal;
+        }
+
+        public static VidQuality from(String str) {
+            for (VidQuality q : VidQuality.values()){
+                if(q.getQual().equals(str)) {
+                    return q;
+                }
+            }
+            return null;
         }
     }
 

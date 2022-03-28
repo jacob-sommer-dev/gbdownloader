@@ -68,21 +68,32 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:weightSum="7">
+
+
+            <Spinner
+                android:id="@+id/vidQualSpinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_weight="3" />
 
             <ImageButton
                 android:id="@+id/dwnld_btn"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                app:srcCompat="@android:drawable/ic_input_add" />
+                app:srcCompat="@android:drawable/ic_input_add"
+                android:layout_weight="2"/>
 
             <ImageButton
                 android:id="@+id/delete_btn"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                app:srcCompat="@android:drawable/ic_delete" />
+                app:srcCompat="@android:drawable/ic_delete"
+                android:layout_weight="2"/>
 
         </LinearLayout>
 
@@ -92,6 +103,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:scaleY="3" />
+
+        <TextView
+            android:id="@+id/progressText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="0 / ?"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

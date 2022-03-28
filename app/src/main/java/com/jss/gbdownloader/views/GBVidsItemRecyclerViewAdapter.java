@@ -40,9 +40,12 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.jss.gbdownloader.Constants;
@@ -57,6 +60,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * {@link RecyclerView.Adapter} that can display a {@link GBVideoInfo}.
@@ -121,7 +125,8 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
         //set image view
         NetUtils.getImageForView(holder.mVidImgView, holder.mItem.getImageUrl());
 
-        holder.mVidTitleView.setText(holder.mItem.getTitle());
+        String title = holder.mItem.getTitle();
+        holder.mVidTitleView.setText(title);
         holder.mVidDescView.setText(holder.mItem.getDesc());
         holder.mVidLengthView.setText(holder.mItem.getLength());
 
@@ -135,14 +140,35 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
             }
         });
 
-        String uri = holder.mItem.getVideoUrl().toString();
-        if(!progressTable.containsKey(uri)){
-            progressTable.put(uri, new ProgressListener() {
-                @Override
-                public void onProgressUpdated(int progress) {
-                    holder.updateProgress(progress);
+        holder.mVidQualSpinner.setAdapter(new ArrayAdapter<String>(activity.getApplicationContext(), android.R.layout.simple_spinner_item, holder.mItem.getVidQualsStrings()));
+        holder.mVidQualSpinner.setSelection(holder.mItem.getQualPos(), false);
+
+        URI uri = holder.mItem.getVideoUrl(NetUtils.VidQuality.from((String) holder.mVidQualSpinner.getSelectedItem()));
+        String uriStr = null;
+        // if uri is null, quality not available, try to find another
+        if (uri == null) {
+            for (int i = 0; i < holder.mVidQualSpinner.getAdapter().getCount(); i++) {
+                uri = holder.mItem.getVideoUrl(NetUtils.VidQuality.from((String) holder.mVidQualSpinner.getItemAtPosition(i)));
+                if(uri != null) {
+                    // found one, break
+                    uriStr = uri.toString();
+                    break;
                 }
-            });
+            }
+        } else {
+            uriStr = uri.toString();
+        }
+
+        if(uriStr != null) {
+            // set visible in case they were invisible before
+            holder.mVidQualSpinner.setVisibility(View.VISIBLE);
+            holder.dlLayoutView.setVisibility(View.VISIBLE);
+
+            holder.checkProgressListenerAttached(uriStr);
+            holder.updateDLButton();
+        } else {
+            holder.mVidQualSpinner.setVisibility(View.INVISIBLE);
+            holder.dlLayoutView.setVisibility(View.INVISIBLE);
         }
 
         if(holder.mItem.isPremium()){
@@ -151,7 +177,6 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
             holder.mView.setBackgroundColor(Color.rgb(188,188,188));
         }
 
-        holder.updateDLButton();
 
         //debug
         //Log.d("GB VID INFO", "\n" + holder.mItem.toString() + "\n");
@@ -159,8 +184,12 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
 
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {
-        String uri = holder.mItem.getVideoUrl().toString();
-        progressTable.remove(uri);
+        for(URI uri : holder.mItem.getVideoUrls().values()) {
+            progressTable.remove(uri.toString());
+        }
+
+        holder.mItem.setQualPos(holder.mVidQualSpinner.getSelectedItemPosition());
+
         super.onViewRecycled(holder);
     }
 
@@ -172,31 +201,63 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
     public class ViewHolder extends RecyclerView.ViewHolder {
         public GBVideoInfo mItem;
         public final View mView;
+        public final View dlLayoutView;
         public final ImageView mVidImgView;
         public final TextView mVidTitleView;
         public final TextView mVidDescView;
         public final TextView mVidLengthView;
+        public final Spinner mVidQualSpinner;
         public final ImageButton mVidDLButton;
         public final ImageButton mVidDeleteButton;
         public final ProgressBar mProgressBar;
+        public final TextView mProgressText;
         public final View mTxtsLayout;
 
         public ViewHolder(View view) {
             super(view);
             mView = view;
+            dlLayoutView = view.findViewById(R.id.dl_layout);
             mVidImgView = (ImageView) view.findViewById(R.id.vid_img);
             mVidTitleView = (TextView) view.findViewById(R.id.vid_title_view);
             mVidDescView = (TextView) view.findViewById(R.id.vid_desc_view);
             mVidLengthView = (TextView) view.findViewById(R.id.vid_time_len_view);
+            mVidQualSpinner = (Spinner) view.findViewById(R.id.vidQualSpinner);
             mVidDLButton = (ImageButton) view.findViewById(R.id.dwnld_btn);
             mVidDeleteButton = (ImageButton) view.findViewById(R.id.delete_btn);
             mProgressBar = (ProgressBar) view.findViewById(R.id.progressBar);
+            mProgressText = (TextView) view.findViewById(R.id.progressText);
             mTxtsLayout = view.findViewById(R.id.txts_layout);
+
+            mVidQualSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                    if(ViewHolder.this.mItem != null) {
+                        String uri = ViewHolder.this.mItem.getVideoUrl(NetUtils.VidQuality.from((String) ViewHolder.this.mVidQualSpinner.getSelectedItem())).toString();
+                        checkProgressListenerAttached(uri);
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
+
+                }
+            });
         }
 
         @Override
         public String toString() {
             return super.toString() + " '" + mVidTitleView.getText() + "'";
+        }
+
+        public void checkProgressListenerAttached(String uri) {
+            if(!progressTable.containsKey(uri)){
+                progressTable.put(uri, new ProgressListener() {
+                    @Override
+                    public void onProgressUpdated(int progress) {
+                        updateProgress(progress);
+                    }
+                });
+            }
         }
 
         public void updateProgress(Integer progress) {
@@ -209,7 +270,9 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                     public void run() {
                         updateDLButton(Constants.DLButtonState.DOWNLOADING);
                         mProgressBar.setVisibility(View.VISIBLE);
+                        mProgressText.setVisibility(View.VISIBLE);
                         mProgressBar.setProgress(prog);
+                        mProgressText.setText(String.format(Locale.getDefault(), "%d", prog)); // TODO
 
                         if(prog >= 100){
                             updateDLButton(Constants.DLButtonState.DOWNLOADED);
@@ -221,7 +284,7 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
 
         public void updateDLButton(){
             if(mItem != null){
-                String uri = mItem.getVideoUrl().toString();
+                String uri = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem())).toString();
                 //check if the video is downloaded
                 try{
                     if(FileUtils.checkIfDownloaded(uri)){
@@ -242,6 +305,7 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
 
         public void updateDLButton(Constants.DLButtonState state){
             mProgressBar.setVisibility(View.INVISIBLE);
+            mProgressText.setVisibility(View.INVISIBLE);
             mVidDeleteButton.setVisibility(View.GONE);
             switch (state){
                 case READY:
@@ -252,7 +316,19 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                         public void onClick(View view) {
                             if(svcInterface != null){
                                 try {
-                                    svcInterface.enqueue(mItem.getVideoUrl().toString());
+
+                                    String uri = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem())).toString();
+
+                                    if(!progressTable.containsKey(uri)){
+                                        progressTable.put(uri, new ProgressListener() {
+                                            @Override
+                                            public void onProgressUpdated(int progress) {
+                                                updateProgress(progress);
+                                            }
+                                        });
+                                    }
+
+                                    svcInterface.enqueue(uri);
                                 } catch (RemoteException e) {
                                     Log.e(TAG, "Remote Exception clicking download", e);
                                 }
@@ -267,7 +343,8 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                     mVidDeleteButton.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
-                            promptDelete(mItem.getVideoUrl(), false, ViewHolder.this);
+                            URI uri = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem()));
+                            promptDelete(uri, false, ViewHolder.this);
                         }
                     });
                     mVidDLButton.setImageResource(android.R.drawable.ic_media_play);
@@ -276,7 +353,8 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                         public void onClick(View view) {
                             // vlc intent from https://wiki.videolan.org/Android_Player_Intents/
                             int vlcRequestCode = 42;
-                            File f = FileUtils.getFileForUrl(mItem.getVideoUrl());
+                            URI url = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem()));
+                            File f = FileUtils.getFileForUrl(url);
                             Uri uri = Uri.parse(f.getAbsolutePath());
                             Intent vlcIntent = new Intent(Intent.ACTION_VIEW);
                             vlcIntent.setPackage("org.videolan.vlc");
@@ -288,13 +366,15 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                     break;
                 case DOWNLOADING:
                     mProgressBar.setVisibility(View.VISIBLE);
+                    mProgressText.setVisibility(View.VISIBLE);
                     mVidDLButton.setImageResource(android.R.drawable.ic_media_pause);
                     mVidDLButton.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
                             if(svcInterface != null){
                                 try {
-                                    svcInterface.cancel(mItem.getVideoUrl().toString());
+                                    String uri = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem())).toString();
+                                    svcInterface.cancel(uri);
                                 } catch (RemoteException e) {
                                     Log.e(TAG, "Remote Exception clicking stop dl", e);
                                 }
@@ -308,7 +388,8 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                     mVidDeleteButton.setOnClickListener(new View.OnClickListener() {
                         @Override
                         public void onClick(View view) {
-                            promptDelete(mItem.getVideoUrl(), true, ViewHolder.this);
+                            URI uri = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem()));
+                            promptDelete(uri, true, ViewHolder.this);
                         }
                     });
                     mVidDLButton.setImageResource(android.R.drawable.ic_popup_sync);
@@ -317,7 +398,8 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                         public void onClick(View view) {
                             if(svcInterface != null){
                                 try {
-                                    svcInterface.enqueue(mItem.getVideoUrl().toString());
+                                    String uri = mItem.getVideoUrl(NetUtils.VidQuality.from((String) mVidQualSpinner.getSelectedItem())).toString();
+                                    svcInterface.enqueue(uri);
                                 } catch (RemoteException e) {
                                     Log.e(TAG, "Remote Exception clicking retry download", e);
                                 }

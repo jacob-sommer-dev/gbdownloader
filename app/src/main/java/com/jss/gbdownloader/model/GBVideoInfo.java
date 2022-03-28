@@ -19,12 +19,17 @@
 
 package com.jss.gbdownloader.model;
 
+import com.jss.gbdownloader.net.NetUtils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Set;
 
 
 public class GBVideoInfo {
@@ -33,8 +38,9 @@ public class GBVideoInfo {
     private String title;
     private String desc;
     private String length;
-    private URI videoUrl;
+    private HashMap<NetUtils.VidQuality, URI> videoUrls;
     private boolean premium;
+    private int qualPos = 0;
 
     public GBVideoInfo(JSONObject json, String qualStr) throws JSONException, URISyntaxException {
         JSONObject imgObj = json.getJSONObject("image");
@@ -57,7 +63,19 @@ public class GBVideoInfo {
 
         }
 
-        videoUrl = new URI(json.getString(qualStr));
+        // handle more than one uri
+        String[] quals = qualStr.split(",");
+        videoUrls = new HashMap<>(quals.length);
+
+        for(String qual : quals) {
+            if(qual != null) {
+                String url = json.getString(qual);
+                if(!url.isEmpty() && !url.equals("null")) {
+                    videoUrls.put(NetUtils.VidQuality.from(qual), new URI(url));
+                }
+            }
+        }
+
         premium = json.getBoolean("premium");
     }
 
@@ -77,8 +95,36 @@ public class GBVideoInfo {
         return length;
     }
 
-    public URI getVideoUrl() {
-        return videoUrl;
+    public ArrayList<NetUtils.VidQuality> getVidQuals() {
+        Set<NetUtils.VidQuality> keys = videoUrls.keySet();
+        return new ArrayList<>(keys);
+    }
+
+    public ArrayList<String> getVidQualsStrings() {
+        Set<NetUtils.VidQuality> keys = videoUrls.keySet();
+        ArrayList<String> list = new ArrayList<>(keys.size());
+        for(NetUtils.VidQuality q : keys){
+            list.add(q.getQual());
+        }
+        return list;
+    }
+
+    public void setQualPos(int pos) {
+        qualPos = pos;
+    }
+
+    public int getQualPos() {
+        return qualPos;
+    }
+
+    public HashMap<NetUtils.VidQuality, URI> getVideoUrls() {
+        return videoUrls;
+    }
+
+    public URI getVideoUrl(NetUtils.VidQuality qual) {
+        URI uri = null;
+        uri = (qual != null) ? videoUrls.get(qual) : null;
+        return uri;
     }
 
     public boolean isPremium() {
@@ -88,7 +134,7 @@ public class GBVideoInfo {
     @Override
     public String toString(){
         return "IMG URL: " + imageUrl.toString() + "\n" +
-                "VID URL: " + videoUrl.toString() + "\n" +
+                "VID URL: " + videoUrls.toString() + "\n" + // TODO
                 "TITLE: " + title + "\n" +
                 "DESC: " + desc;
     }

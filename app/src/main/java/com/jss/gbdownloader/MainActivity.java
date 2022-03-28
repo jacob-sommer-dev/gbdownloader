@@ -164,7 +164,7 @@ public class MainActivity extends AppCompatActivity {
                     prefs.getString(Constants.API_KEY, null),
                     num,
                     offset,
-                    NetUtils.VidQuality.LOW
+                    NetUtils.VidQuality.ALL
             );
         }
 
