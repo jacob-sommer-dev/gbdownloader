@@ -234,6 +234,7 @@ public class GBVidsItemRecyclerViewAdapter extends RecyclerView.Adapter<GBVidsIt
                     if(ViewHolder.this.mItem != null) {
                         String uri = ViewHolder.this.mItem.getVideoUrl(NetUtils.VidQuality.from((String) ViewHolder.this.mVidQualSpinner.getSelectedItem())).toString();
                         checkProgressListenerAttached(uri);
+                        updateDLButton();
                     }
                 }
 
